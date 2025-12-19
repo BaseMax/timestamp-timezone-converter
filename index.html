@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timestamp Timezone Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .result-card {
+            transition: all 0.3s ease;
+        }
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Timestamp Timezone Converter</h1>
+            <p class="text-gray-600">Convert UNIX timestamps to readable dates across multiple timezones</p>
+        </div>
+
+        <!-- Main Card -->
+        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+            <!-- Input Section -->
+            <div class="mb-6">
+                <label for="timestamp-input" class="block text-sm font-medium text-gray-700 mb-2">
+                    UNIX Timestamp
+                </label>
+                <div class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="timestamp-input" 
+                        placeholder="Enter UNIX timestamp (e.g., 1734571842)"
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                    <button 
+                        onclick="useCurrentTime()"
+                        class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    >
+                        Now
+                    </button>
+                    <button 
+                        onclick="convertTimestamp()"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        Convert
+                    </button>
+                </div>
+                <p class="mt-2 text-sm text-gray-500">Enter a UNIX timestamp in seconds or milliseconds</p>
+            </div>
+
+            <!-- Timezone Selector -->
+            <div class="mb-6">
+                <label for="timezone-select" class="block text-sm font-medium text-gray-700 mb-2">
+                    Select Timezone
+                </label>
+                <select 
+                    id="timezone-select"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onchange="convertTimestamp()"
+                >
+                    <option value="UTC">UTC (Coordinated Universal Time)</option>
+                    <option value="America/New_York">America/New_York (EST/EDT)</option>
+                    <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+                    <option value="America/Denver">America/Denver (MST/MDT)</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                    <option value="Europe/London">Europe/London (GMT/BST)</option>
+                    <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+                    <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+                    <option value="Europe/Moscow">Europe/Moscow (MSK)</option>
+                    <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                    <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                    <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                    <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                    <option value="Australia/Sydney">Australia/Sydney (AEDT/AEST)</option>
+                    <option value="Pacific/Auckland">Pacific/Auckland (NZDT/NZST)</option>
+                </select>
+            </div>
+
+            <!-- Error Message -->
+            <div id="error-message" class="hidden mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+                <p class="text-red-700 text-sm"></p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" class="hidden">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Converted Results</h2>
+                
+                <!-- Readable Format -->
+                <div class="result-card bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg mb-4">
+                    <h3 class="text-sm font-medium text-gray-600 mb-1">Readable Format</h3>
+                    <p id="readable-output" class="text-lg font-semibold text-gray-800"></p>
+                </div>
+
+                <!-- ISO 8601 Format -->
+                <div class="result-card bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg mb-4">
+                    <h3 class="text-sm font-medium text-gray-600 mb-1">ISO 8601 Format</h3>
+                    <div class="flex items-center justify-between">
+                        <p id="iso-output" class="text-lg font-mono text-gray-800"></p>
+                        <button 
+                            onclick="copyToClipboard('iso-output')"
+                            class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                </div>
+
+                <!-- RFC 2822 Format -->
+                <div class="result-card bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg mb-4">
+                    <h3 class="text-sm font-medium text-gray-600 mb-1">RFC 2822 Format</h3>
+                    <div class="flex items-center justify-between">
+                        <p id="rfc-output" class="text-lg font-mono text-gray-800"></p>
+                        <button 
+                            onclick="copyToClipboard('rfc-output')"
+                            class="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Additional Info -->
+                <div class="result-card bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg">
+                    <h3 class="text-sm font-medium text-gray-600 mb-2">Additional Information</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-gray-600">Day of Week</p>
+                            <p id="day-of-week" class="text-md font-semibold text-gray-800"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600">Time Since Epoch</p>
+                            <p id="time-since-epoch" class="text-md font-semibold text-gray-800"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600">Unix Timestamp</p>
+                            <p id="unix-timestamp" class="text-md font-mono text-gray-800"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600">Timezone Offset</p>
+                            <p id="timezone-offset" class="text-md font-semibold text-gray-800"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 text-gray-600 text-sm">
+            <p>Built with HTML, TailwindCSS, and JavaScript</p>
+        </div>
+    </div>
+
+    <script>
+        // Convert timestamp to readable formats
+        function convertTimestamp() {
+            const input = document.getElementById('timestamp-input').value.trim();
+            const timezone = document.getElementById('timezone-select').value;
+            const errorDiv = document.getElementById('error-message');
+            const resultsDiv = document.getElementById('results');
+
+            // Hide previous results and errors
+            errorDiv.classList.add('hidden');
+            resultsDiv.classList.add('hidden');
+
+            // Validate input
+            if (!input) {
+                showError('Please enter a UNIX timestamp');
+                return;
+            }
+
+            let timestamp = parseFloat(input);
+            if (isNaN(timestamp)) {
+                showError('Invalid timestamp format');
+                return;
+            }
+
+            // Handle both seconds and milliseconds
+            // If timestamp is less than 10000000000, it's likely in seconds
+            if (timestamp < 10000000000) {
+                timestamp = timestamp * 1000;
+            }
+
+            try {
+                // Create Date object
+                const date = new Date(timestamp);
+
+                // Check if date is valid
+                if (isNaN(date.getTime())) {
+                    showError('Invalid timestamp value');
+                    return;
+                }
+
+                // Format options for readable output
+                const readableOptions = {
+                    timeZone: timezone,
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                };
+
+                // Get formatted outputs
+                const readableFormat = date.toLocaleString('en-US', readableOptions);
+                
+                // ISO 8601 format
+                const isoFormat = formatToISO(date, timezone);
+                
+                // RFC 2822 format
+                const rfcFormat = formatToRFC2822(date, timezone);
+
+                // Day of week
+                const dayOptions = { timeZone: timezone, weekday: 'long' };
+                const dayOfWeek = date.toLocaleDateString('en-US', dayOptions);
+
+                // Calculate time since epoch
+                const timeSinceEpoch = formatDuration(timestamp);
+
+                // Get timezone offset
+                const timezoneOffset = getTimezoneOffset(date, timezone);
+
+                // Display results
+                document.getElementById('readable-output').textContent = readableFormat;
+                document.getElementById('iso-output').textContent = isoFormat;
+                document.getElementById('rfc-output').textContent = rfcFormat;
+                document.getElementById('day-of-week').textContent = dayOfWeek;
+                document.getElementById('time-since-epoch').textContent = timeSinceEpoch;
+                document.getElementById('unix-timestamp').textContent = Math.floor(timestamp / 1000);
+                document.getElementById('timezone-offset').textContent = timezoneOffset;
+
+                resultsDiv.classList.remove('hidden');
+            } catch (error) {
+                showError('Error converting timestamp: ' + error.message);
+            }
+        }
+
+        // Format date to ISO 8601
+        function formatToISO(date, timezone) {
+            const options = {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+
+            const formatter = new Intl.DateTimeFormat('en-CA', options);
+            const parts = formatter.formatToParts(date);
+            
+            const year = parts.find(p => p.type === 'year').value;
+            const month = parts.find(p => p.type === 'month').value;
+            const day = parts.find(p => p.type === 'day').value;
+            const hour = parts.find(p => p.type === 'hour').value;
+            const minute = parts.find(p => p.type === 'minute').value;
+            const second = parts.find(p => p.type === 'second').value;
+
+            return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+        }
+
+        // Format date to RFC 2822
+        function formatToRFC2822(date, timezone) {
+            const options = {
+                timeZone: timezone,
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+
+            const formatter = new Intl.DateTimeFormat('en-US', options);
+            const parts = formatter.formatToParts(date);
+            
+            const weekday = parts.find(p => p.type === 'weekday').value;
+            const day = parts.find(p => p.type === 'day').value;
+            const month = parts.find(p => p.type === 'month').value;
+            const year = parts.find(p => p.type === 'year').value;
+            const hour = parts.find(p => p.type === 'hour').value;
+            const minute = parts.find(p => p.type === 'minute').value;
+            const second = parts.find(p => p.type === 'second').value;
+
+            return `${weekday}, ${day} ${month} ${year} ${hour}:${minute}:${second}`;
+        }
+
+        // Get timezone offset
+        function getTimezoneOffset(date, timezone) {
+            const options = {
+                timeZone: timezone,
+                timeZoneName: 'short'
+            };
+            const formatter = new Intl.DateTimeFormat('en-US', options);
+            const parts = formatter.formatToParts(date);
+            const timeZoneName = parts.find(p => p.type === 'timeZoneName');
+            
+            return timeZoneName ? timeZoneName.value : 'N/A';
+        }
+
+        // Format duration since epoch
+        function formatDuration(timestamp) {
+            const seconds = Math.floor(timestamp / 1000);
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            
+            return `${days.toLocaleString()} days, ${hours} hours`;
+        }
+
+        // Use current time
+        function useCurrentTime() {
+            const now = Math.floor(Date.now() / 1000);
+            document.getElementById('timestamp-input').value = now;
+            convertTimestamp();
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.querySelector('p').textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                // Show feedback
+                const button = element.nextElementSibling || element.parentElement.querySelector('button');
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('bg-gray-600');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('bg-gray-600');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        // Convert on Enter key
+        document.getElementById('timestamp-input').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                convertTimestamp();
+            }
+        });
+
+        // Auto-convert on page load if there's a value
+        window.addEventListener('load', function() {
+            const input = document.getElementById('timestamp-input').value;
+            if (input) {
+                convertTimestamp();
+            }
+        });
+    </script>
+</body>
+</html>

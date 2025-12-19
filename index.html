@@ -181,8 +181,9 @@
             }
 
             // Handle both seconds and milliseconds
-            // If timestamp is less than 10000000000, it's likely in seconds
-            if (timestamp < 10000000000) {
+            // Timestamps before September 9, 2001 are likely in seconds
+            const SECONDS_TO_MS_THRESHOLD = 10000000000; // ~September 9, 2001
+            if (timestamp < SECONDS_TO_MS_THRESHOLD) {
                 timestamp = timestamp * 1000;
             }
 
@@ -278,10 +279,16 @@
                 return 'Z';
             }
             
-            // Get offset in minutes
-            const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-            const tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
-            const offsetMinutes = (tzDate - utcDate) / (1000 * 60);
+            // Get offset in minutes by comparing UTC and local time parts
+            const utcTime = getTimeParts(date, 'UTC');
+            const tzTime = getTimeParts(date, timezone);
+            
+            // Calculate offset in minutes
+            const utcMinutes = utcTime.year * 525600 + utcTime.month * 43200 + utcTime.day * 1440 + 
+                              utcTime.hour * 60 + utcTime.minute;
+            const tzMinutes = tzTime.year * 525600 + tzTime.month * 43200 + tzTime.day * 1440 + 
+                             tzTime.hour * 60 + tzTime.minute;
+            const offsetMinutes = tzMinutes - utcMinutes;
             
             const sign = offsetMinutes >= 0 ? '+' : '-';
             const absOffset = Math.abs(offsetMinutes);
@@ -289,6 +296,28 @@
             const minutes = String(absOffset % 60).padStart(2, '0');
             
             return `${sign}${hours}:${minutes}`;
+        }
+
+        // Get time parts for a given timezone
+        function getTimeParts(date, timezone) {
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: timezone,
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false
+            });
+            
+            const parts = formatter.formatToParts(date);
+            return {
+                year: parseInt(parts.find(p => p.type === 'year').value),
+                month: parseInt(parts.find(p => p.type === 'month').value),
+                day: parseInt(parts.find(p => p.type === 'day').value),
+                hour: parseInt(parts.find(p => p.type === 'hour').value),
+                minute: parseInt(parts.find(p => p.type === 'minute').value)
+            };
         }
 
         // Format date to RFC 2822
@@ -328,17 +357,14 @@
                 return '+0000';
             }
             
-            // Get offset in minutes
-            const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-            const tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
-            const offsetMinutes = (tzDate - utcDate) / (1000 * 60);
+            // Use the same calculation as ISO but format without colon
+            const isoOffset = getTimezoneOffsetISO(date, timezone);
+            if (isoOffset === 'Z') {
+                return '+0000';
+            }
             
-            const sign = offsetMinutes >= 0 ? '+' : '-';
-            const absOffset = Math.abs(offsetMinutes);
-            const hours = String(Math.floor(absOffset / 60)).padStart(2, '0');
-            const minutes = String(absOffset % 60).padStart(2, '0');
-            
-            return `${sign}${hours}${minutes}`;
+            // Remove colon from ISO format (e.g., "-05:00" -> "-0500")
+            return isoOffset.replace(':', '');
         }
 
         // Get timezone offset
@@ -381,7 +407,17 @@
         function copyToClipboard(elementId) {
             const element = document.getElementById(elementId);
             const text = element.textContent;
-            const button = element.nextElementSibling || element.parentElement.querySelector('button');
+            
+            // Find the copy button - it's the next element in the parent div
+            const container = element.parentElement;
+            const buttons = container.querySelectorAll('button');
+            const button = buttons[buttons.length - 1]; // Get the last button (Copy button)
+            
+            if (!button) {
+                console.error('Copy button not found');
+                return;
+            }
+            
             const originalText = button.textContent;
             
             // Try modern clipboard API first

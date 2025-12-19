@@ -266,7 +266,29 @@
             const minute = parts.find(p => p.type === 'minute').value;
             const second = parts.find(p => p.type === 'second').value;
 
-            return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+            // Get timezone offset in ISO format
+            const tzOffset = getTimezoneOffsetISO(date, timezone);
+
+            return `${year}-${month}-${day}T${hour}:${minute}:${second}${tzOffset}`;
+        }
+
+        // Get timezone offset in ISO 8601 format
+        function getTimezoneOffsetISO(date, timezone) {
+            if (timezone === 'UTC') {
+                return 'Z';
+            }
+            
+            // Get offset in minutes
+            const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+            const tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
+            const offsetMinutes = (tzDate - utcDate) / (1000 * 60);
+            
+            const sign = offsetMinutes >= 0 ? '+' : '-';
+            const absOffset = Math.abs(offsetMinutes);
+            const hours = String(Math.floor(absOffset / 60)).padStart(2, '0');
+            const minutes = String(absOffset % 60).padStart(2, '0');
+            
+            return `${sign}${hours}:${minutes}`;
         }
 
         // Format date to RFC 2822
@@ -294,7 +316,29 @@
             const minute = parts.find(p => p.type === 'minute').value;
             const second = parts.find(p => p.type === 'second').value;
 
-            return `${weekday}, ${day} ${month} ${year} ${hour}:${minute}:${second}`;
+            // Get timezone offset in RFC 2822 format
+            const tzOffset = getTimezoneOffsetRFC(date, timezone);
+
+            return `${weekday}, ${day} ${month} ${year} ${hour}:${minute}:${second} ${tzOffset}`;
+        }
+
+        // Get timezone offset in RFC 2822 format
+        function getTimezoneOffsetRFC(date, timezone) {
+            if (timezone === 'UTC') {
+                return '+0000';
+            }
+            
+            // Get offset in minutes
+            const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+            const tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
+            const offsetMinutes = (tzDate - utcDate) / (1000 * 60);
+            
+            const sign = offsetMinutes >= 0 ? '+' : '-';
+            const absOffset = Math.abs(offsetMinutes);
+            const hours = String(Math.floor(absOffset / 60)).padStart(2, '0');
+            const minutes = String(absOffset % 60).padStart(2, '0');
+            
+            return `${sign}${hours}${minutes}`;
         }
 
         // Get timezone offset
@@ -337,21 +381,55 @@
         function copyToClipboard(elementId) {
             const element = document.getElementById(elementId);
             const text = element.textContent;
+            const button = element.nextElementSibling || element.parentElement.querySelector('button');
+            const originalText = button.textContent;
             
-            navigator.clipboard.writeText(text).then(() => {
-                // Show feedback
-                const button = element.nextElementSibling || element.parentElement.querySelector('button');
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
-                button.classList.add('bg-gray-600');
-                
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopyFeedback(button, originalText);
+                }).catch(err => {
+                    // Fallback to execCommand
+                    fallbackCopyToClipboard(text, button, originalText);
+                });
+            } else {
+                // Use fallback method
+                fallbackCopyToClipboard(text, button, originalText);
+            }
+        }
+
+        // Fallback copy method using execCommand
+        function fallbackCopyToClipboard(text, button, originalText) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showCopyFeedback(button, originalText);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                button.textContent = 'Failed';
                 setTimeout(() => {
                     button.textContent = originalText;
-                    button.classList.remove('bg-gray-600');
                 }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-            });
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+
+        // Show copy feedback
+        function showCopyFeedback(button, originalText) {
+            button.textContent = 'Copied!';
+            button.classList.add('bg-gray-600');
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('bg-gray-600');
+            }, 2000);
         }
 
         // Convert on Enter key
